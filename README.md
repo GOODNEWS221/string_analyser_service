@@ -43,8 +43,7 @@ cd string_analyser_service
 
 2️⃣ Create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate  # macOS/Linux
-venv\Scripts\activate     # Windows
+venv\Scripts\activate    
 
 3️⃣ Install dependencies
 pip install -r requirements.txt
@@ -58,7 +57,7 @@ python manage.py runserver
 
 
 Your API will now be live at
-➡️ http://127.0.0.1:8000/
+➡️ http://127.0.0.1:8000/string
 
 🧾 API Endpoints
 1️⃣ Analyze/Create String
@@ -153,11 +152,13 @@ Status Code	Meaning
 404	Not Found — String doesn’t exist
 409	Conflict — String already exists
 422	Unprocessable Entity — Invalid data type
+
+
 🌐 Deployment (AWS)
 
 Push code to GitHub
 
-Connect your repo to AWS Elastic Beanstalk or AWS EC2
+Connect my repo to AWS EC2 instance(Same instance I used for the stage 0 project)
 
 Install dependencies on the server
 
