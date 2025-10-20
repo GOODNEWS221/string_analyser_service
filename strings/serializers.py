@@ -4,6 +4,7 @@ from .utils import string_analysis
 
 class StringFileSerializer(serializers.ModelSerializer):
     properties = serializers.SerializerMethodField()
+    id = serializers.CharField(read_only=True) 
 
     class Meta:
         model = StringFile

@@ -17,7 +17,8 @@ class StringCreateView(generics.CreateAPIView):
         if not value:
             return Response({"error": "Missing 'value' field"}, status=400)
         if not isinstance(value, str):
-            return Response({"error": "Value must be a string"}, status=422)
+            return Response({"error": "Invalid data type for 'value' (must be string)"},
+                            status=422)
         if StringFile.objects.filter(value=value).exists():
             return Response({"error": "String already exists"}, status=409)
 
@@ -53,6 +54,18 @@ class StringListView(generics.ListAPIView):
             qs = qs.filter(value__icontains=char)
 
         return qs
+    
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        filters_applied = {
+            key: request.query_params[key] for key in request.query_params
+        }
+        return Response({
+            "data": serializer.data,
+            "count": queryset.count(),
+            "filters_applied": filters_applied
+        }, status=200)
 
 
 class StringDeleteView(APIView):

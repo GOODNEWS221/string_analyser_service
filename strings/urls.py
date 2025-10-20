@@ -4,7 +4,7 @@ from .views import (
     StringRetrieveView,
     StringListView,
     StringDeleteView,
-    NaturalLanguageAnalysisView,
+    NaturalLanguageFilterView,
 )
 
 urlpatterns = [
@@ -12,5 +12,5 @@ urlpatterns = [
     path('strings/create/', StringCreateView.as_view(), name='create_string'),
     path('strings/<str:value>/', StringRetrieveView.as_view(), name='get_string'),
     path('strings/<str:value>/delete/', StringDeleteView.as_view(), name='delete_string'),
-    path('strings/nlp/', NaturalLanguageAnalysisView.as_view(), name='nlp_analysis'),
+    path('strings/nlp/', NaturalLanguageFilterView.as_view(), name='nlp_analysis'),
 ]
