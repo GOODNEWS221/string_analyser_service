@@ -15,7 +15,14 @@ SECRET_KEY = 'django-insecure-c0civk7gy3c&9#_jpm--o3t^-^av#w2j!5egq^b@#cvw3z$zdt
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+
+ALLOWED_HOSTS = [
+    '13.60.28.127',
+    '127.0.0.1',
+    'stringanalyser.duckdns.org',
+    'ec2-13-60-28-127.eu-north-1.compute.amazonaws.com',
+]
+
 
 
 # Application definition
@@ -66,10 +73,15 @@ WSGI_APPLICATION = 'string_analyser.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'string_analyser_db',
+        'USER': 'Gosas',
+        'PASSWORD': 'Gosas123!',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
+
 
 
 # Password validation
