@@ -1,130 +1,109 @@
-from rest_framework import generics, status
-from rest_framework.views import APIView
+from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import StringFile
 from .serializers import StringFileSerializer
-import re
+from .utils import string_analysis, parse_natural_language_query
 
 
-# -------------------- LIST + CREATE --------------------
-class StringListCreateView(generics.ListCreateAPIView):
-    serializer_class = StringFileSerializer
-    queryset = StringFile.objects.all()
+class StringListCreateView(APIView):
+    def get(self, request):
+        queryset = StringFile.objects.all()
+        filters = {}
 
-    def get_queryset(self):
-        qs = super().get_queryset()
-        filters = self.request.query_params
+        # Apply query filters
+        if 'is_palindrome' in request.query_params:
+            filters['is_palindrome'] = request.query_params.get('is_palindrome').lower() == 'true'
+        if 'min_length' in request.query_params:
+            queryset = queryset.filter(length__gte=int(request.query_params['min_length']))
+        if 'max_length' in request.query_params:
+            queryset = queryset.filter(length__lte=int(request.query_params['max_length']))
+        if 'word_count' in request.query_params:
+            queryset = queryset.filter(word_count=int(request.query_params['word_count']))
+        if 'contains_character' in request.query_params:
+            char = request.query_params['contains_character']
+            queryset = queryset.filter(value__icontains=char)
 
-        if 'is_palindrome' in filters:
-            qs = qs.filter(is_palindrome=filters['is_palindrome'].lower() == 'true')
-        if 'min_length' in filters:
-            qs = qs.filter(length__gte=int(filters['min_length']))
-        if 'max_length' in filters:
-            qs = qs.filter(length__lte=int(filters['max_length']))
-        if 'word_count' in filters:
-            qs = qs.filter(word_count=int(filters['word_count']))
-        if 'contains_character' in filters:
-            qs = qs.filter(value__icontains=filters['contains_character'])
-
-        return qs
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        filters_applied = {key: request.query_params[key] for key in request.query_params}
+        serializer = StringFileSerializer(queryset, many=True)
         return Response({
             "data": serializer.data,
             "count": queryset.count(),
-            "filters_applied": filters_applied
-        }, status=status.HTTP_200_OK)
+            "filters_applied": request.query_params
+        })
 
-    def create(self, request, *args, **kwargs):
-        value = request.data.get('value')
+    def post(self, request):
+        data = request.data
 
-        # Missing field
-        if not value:
-            return Response({"error": "Missing 'value' field"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        # Missing 'value' field
+        if 'value' not in data:
+            return Response({"error": "Missing 'value' field"}, status=status.HTTP_400_BAD_REQUEST)
+
+        value = data['value']
 
         # Invalid data type
         if not isinstance(value, str):
-            return Response({"error": "Invalid data type for 'value' (must be string)"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            return Response({"error": "'value' must be a string"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
         # Duplicate string
         if StringFile.objects.filter(value=value).exists():
             return Response({"error": "String already exists"}, status=status.HTTP_409_CONFLICT)
 
-        serializer = self.get_serializer(data={'value': value})
-        serializer.is_valid(raise_exception=True)
-        instance = serializer.save()
+        props = string_analysis(value)
+        string_obj = StringFile.objects.create(id=props['sha256_hash'], value=value, **props)
+        serializer = StringFileSerializer(string_obj)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-# -------------------- RETRIEVE --------------------
-class StringRetrieveView(generics.RetrieveAPIView):
-    serializer_class = StringFileSerializer
-    lookup_field = 'value'
-    queryset = StringFile.objects.all()
+class StringRetrieveView(APIView):
+    def get(self, request, value):
+        try:
+            string_obj = StringFile.objects.get(value=value)
+        except StringFile.DoesNotExist:
+            return Response({"error": "String not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = StringFileSerializer(string_obj)
+        return Response(serializer.data)
 
 
-# -------------------- DELETE --------------------
 class StringDeleteView(APIView):
     def delete(self, request, value):
-        instance = StringFile.objects.filter(value=value).first()
-        if not instance:
-            return Response({"error": "String does not exist"}, status=status.HTTP_404_NOT_FOUND)
-        instance.delete()
+        try:
+            string_obj = StringFile.objects.get(value=value)
+        except StringFile.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        string_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-# -------------------- NATURAL LANGUAGE FILTER --------------------
 class NaturalLanguageFilterView(APIView):
     def get(self, request):
-        query = request.query_params.get("query", "").lower()
+        query = request.query_params.get('query')
         if not query:
-            return Response({"error": "Missing query parameter"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        filters = {}
+        try:
+            parsed = parse_natural_language_query(query)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Basic natural language parsing
-        if "palindromic" in query or "palindrome" in query:
-            filters["is_palindrome"] = True
+        filters = parsed['parsed_filters']
+        queryset = StringFile.objects.all()
 
-        if "single word" in query or "one word" in query:
-            filters["word_count"] = 1
-        elif match := re.search(r"(\d+)\s+word", query):
-            filters["word_count"] = int(match.group(1))
+        if 'is_palindrome' in filters:
+            queryset = queryset.filter(is_palindrome=filters['is_palindrome'])
+        if 'word_count' in filters:
+            queryset = queryset.filter(word_count=filters['word_count'])
+        if 'min_length' in filters:
+            queryset = queryset.filter(length__gte=filters['min_length'])
+        if 'max_length' in filters:
+            queryset = queryset.filter(length__lte=filters['max_length'])
+        if 'contains_character' in filters:
+            queryset = queryset.filter(value__icontains=filters['contains_character'])
 
-        if match := re.search(r"longer than (\d+)", query):
-            filters["min_length"] = int(match.group(1)) + 1
-        elif match := re.search(r"shorter than (\d+)", query):
-            filters["max_length"] = int(match.group(1)) - 1
-
-        if match := re.search(r"letter (\w)", query):
-            filters["contains_character"] = match.group(1)
-        elif match := re.search(r"contain.*?(\w)", query):
-            filters["contains_character"] = match.group(1)
-
-        if not filters:
-            return Response({"error": "Unable to parse natural language query"}, status=status.HTTP_400_BAD_REQUEST)
-
-        qs = StringFile.objects.all()
-        if "is_palindrome" in filters:
-            qs = qs.filter(is_palindrome=True)
-        if "min_length" in filters:
-            qs = qs.filter(length__gte=filters["min_length"])
-        if "max_length" in filters:
-            qs = qs.filter(length__lte=filters["max_length"])
-        if "word_count" in filters:
-            qs = qs.filter(word_count=filters["word_count"])
-        if "contains_character" in filters:
-            qs = qs.filter(value__icontains=filters["contains_character"])
-
-        serializer = StringFileSerializer(qs, many=True)
+        serializer = StringFileSerializer(queryset, many=True)
         return Response({
             "data": serializer.data,
-            "count": qs.count(),
-            "interpreted_query": {
-                "original": query,
-                "parsed_filters": filters,
-            },
-        }, status=status.HTTP_200_OK)
+            "count": queryset.count(),
+            "interpreted_query": parsed
+        })
