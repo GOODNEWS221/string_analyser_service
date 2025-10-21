@@ -6,10 +6,37 @@ from .serializers import StringFileSerializer
 import re
 
 
-# -------------------- CREATE --------------------
-class StringCreateView(generics.CreateAPIView):
+# -------------------- LIST + CREATE --------------------
+class StringListCreateView(generics.ListCreateAPIView):
     serializer_class = StringFileSerializer
     queryset = StringFile.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        filters = self.request.query_params
+
+        if 'is_palindrome' in filters:
+            qs = qs.filter(is_palindrome=filters['is_palindrome'].lower() == 'true')
+        if 'min_length' in filters:
+            qs = qs.filter(length__gte=int(filters['min_length']))
+        if 'max_length' in filters:
+            qs = qs.filter(length__lte=int(filters['max_length']))
+        if 'word_count' in filters:
+            qs = qs.filter(word_count=int(filters['word_count']))
+        if 'contains_character' in filters:
+            qs = qs.filter(value__icontains=filters['contains_character'])
+
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        filters_applied = {key: request.query_params[key] for key in request.query_params}
+        return Response({
+            "data": serializer.data,
+            "count": queryset.count(),
+            "filters_applied": filters_applied
+        }, status=status.HTTP_200_OK)
 
     def create(self, request, *args, **kwargs):
         value = request.data.get('value')
@@ -39,42 +66,10 @@ class StringRetrieveView(generics.RetrieveAPIView):
     queryset = StringFile.objects.all()
 
 
-# -------------------- LIST + FILTERS --------------------
-class StringListView(generics.ListAPIView):
-    serializer_class = StringFileSerializer
-
-    def get_queryset(self):
-        qs = StringFile.objects.all()
-        filters = self.request.query_params
-
-        if 'is_palindrome' in filters:
-            qs = qs.filter(is_palindrome=filters['is_palindrome'].lower() == 'true')
-        if 'min_length' in filters:
-            qs = qs.filter(length__gte=int(filters['min_length']))
-        if 'max_length' in filters:
-            qs = qs.filter(length__lte=int(filters['max_length']))
-        if 'word_count' in filters:
-            qs = qs.filter(word_count=int(filters['word_count']))
-        if 'contains_character' in filters:
-            qs = qs.filter(value__icontains=filters['contains_character'])
-
-        return qs
-
-    def list(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        serializer = self.get_serializer(queryset, many=True)
-        filters_applied = {key: request.query_params[key] for key in request.query_params}
-        return Response({
-            "data": serializer.data,
-            "count": queryset.count(),
-            "filters_applied": filters_applied
-        }, status=status.HTTP_200_OK)
-
-
 # -------------------- DELETE --------------------
 class StringDeleteView(APIView):
-    def delete(self, request, string_value):
-        instance = StringFile.objects.filter(value=string_value).first()
+    def delete(self, request, value):
+        instance = StringFile.objects.filter(value=value).first()
         if not instance:
             return Response({"error": "String does not exist"}, status=status.HTTP_404_NOT_FOUND)
         instance.delete()
