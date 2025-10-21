@@ -170,10 +170,7 @@ Start the server or configure gunicorn for production
 
 
 
-Example:
-
-https://your-aws-domain.com/strings
-
+http://ec2-13-60-28-127.eu-north-1.compute.amazonaws.com/strings/
 
 
 
