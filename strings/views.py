@@ -85,7 +85,6 @@ class StringDeleteView(APIView):
         string_obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-
 class NaturalLanguageFilterView(APIView):
     def get(self, request):
         query = request.query_params.get('query')
@@ -115,5 +114,8 @@ class NaturalLanguageFilterView(APIView):
         return Response({
             "data": serializer.data,
             "count": queryset.count(),
-            "interpreted_query": parsed
+            "filters_applied": filters  # <-- HNG expects this key
         }, status=status.HTTP_200_OK)
+
+
+
