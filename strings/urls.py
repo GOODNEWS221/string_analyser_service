@@ -1,15 +1,17 @@
-# urls.py
 from django.urls import path
 from .views import (
     StringListCreateView,
-    StringRetrieveView,
-    StringDeleteView,
+    StringRetrieveDeleteView,   # Combined GET & DELETE
     NaturalLanguageFilterView
 )
 
 urlpatterns = [
+    # Create / List strings
     path('strings/', StringListCreateView.as_view(), name='list_create_strings'),
-    path('strings/<str:value>/', StringRetrieveView.as_view(), name='get_string'),
-    path('strings/<str:value>/delete/', StringDeleteView.as_view(), name='delete_string'),
+
+    # Retrieve single string or delete it
+    path('strings/<str:value>/', StringRetrieveDeleteView.as_view(), name='get_delete_string'),
+
+    # Natural language filtering
     path('strings/filter-by-natural-language/', NaturalLanguageFilterView.as_view(), name='nlp_analysis'),
 ]
