@@ -19,7 +19,8 @@ class StringListCreateView(APIView):
             queryset = queryset.filter(length=int(length))
 
         if is_palindrome:
-            queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
+            # filter on JSONField properties
+            queryset = queryset.filter(properties__is_palindrome=is_palindrome.lower() == 'true')
 
         if contains:
             queryset = queryset.filter(value__icontains=contains)
@@ -88,7 +89,7 @@ class NaturalLanguageFilterView(APIView):
         queryset = StringFile.objects.all()
 
         if 'is_palindrome' in filters:
-            queryset = queryset.filter(is_palindrome=filters['is_palindrome'])
+            queryset = queryset.filter(properties__is_palindrome=filters['is_palindrome'])
         if 'word_count' in filters:
             queryset = queryset.filter(word_count=filters['word_count'])
         if 'min_length' in filters:
@@ -103,4 +104,3 @@ class NaturalLanguageFilterView(APIView):
             "data": serializer.data,
             "count": queryset.count(),
             "interpreted_query": parsed
-        }, status=status.HTTP_200_OK)
