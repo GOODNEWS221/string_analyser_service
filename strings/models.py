@@ -1,17 +1,17 @@
 from django.db import models
+import hashlib
 
-class StringFile(models.Model):
-    id = models.CharField(primary_key=True, max_length=64)  # sha256 hash
+class AnalyzedString(models.Model):
     value = models.TextField(unique=True)
     length = models.IntegerField()
     is_palindrome = models.BooleanField()
     unique_characters = models.IntegerField()
     word_count = models.IntegerField()
-    sha256_hash = models.CharField(max_length=64)
+    sha256_hash = models.CharField(max_length=64, unique=True)
     character_frequency_map = models.JSONField()
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return self.value
-
-
+    def save(self, *args, **kwargs):
+        # Compute SHA256 hash
+        self.sha256_hash = hashlib.sha256(self.value.encode('utf-8')).hexdigest()
+        super().save(*args, **kwargs)
