@@ -72,4 +72,11 @@ class StringRetrieveView(APIView):
 
 
 class StringDeleteView(APIView):
-    def
+    def delete(self, request, value):
+        try:
+            string_obj = StringFile.objects.get(value=value)
+        except StringFile.DoesNotExist:
+            return Response({"error": "String not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        string_obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
