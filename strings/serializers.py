@@ -1,20 +1,19 @@
-# serializers.py
 from rest_framework import serializers
-from .models import StringFile
+from .models import AnalyzedString
+from .utils import analyze_string
+import hashlib
 
-class StringFileSerializer(serializers.ModelSerializer):
-    properties = serializers.SerializerMethodField()
-
+class AnalyzedStringSerializer(serializers.ModelSerializer):
     class Meta:
-        model = StringFile
-        fields = ['id', 'value', 'properties', 'created_at']
+        model = AnalyzedString
+        fields = "__all__"
+        read_only_fields = ("sha256_hash", "length", "is_palindrome", "unique_characters", "word_count", "character_frequency_map", "created_at")
 
-    def get_properties(self, obj):
-        return {
-            "length": obj.length,
-            "is_palindrome": obj.is_palindrome,
-            "unique_characters": obj.unique_characters,
-            "word_count": obj.word_count,
-            "sha256_hash": obj.sha256_hash,
-            "character_frequency_map": obj.character_frequency_map,
-        }
+    value = serializers.CharField()
+
+    def create(self, validated_data):
+        value = validated_data.get("value")
+        analysis = analyze_string(value)
+        validated_data.update(analysis)
+        validated_data["sha256_hash"] = hashlib.sha256(value.encode("utf-8")).hexdigest()
+        return super().create(validated_data)
