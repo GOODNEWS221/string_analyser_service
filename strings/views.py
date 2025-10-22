@@ -13,7 +13,8 @@ class StringListCreateView(APIView):
         # HNG-compatible filters
         length = request.query_params.get('length')
         is_palindrome = request.query_params.get('is_palindrome')
-        contains = request.query_params.get('contains')
+        word_count = request.query_params.get('word_count')
+        contains_character = request.query_params.get('contains_character')
 
         if length:
             queryset = queryset.filter(length=int(length))
@@ -21,8 +22,11 @@ class StringListCreateView(APIView):
         if is_palindrome:
             queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
 
-        if contains:
-            queryset = queryset.filter(value__icontains=contains)
+        if word_count:
+            queryset = queryset.filter(word_count=int(word_count))
+
+        if contains_character:
+            queryset = queryset.filter(value__icontains=contains_character)
 
         serializer = StringFileSerializer(queryset, many=True)
         return Response({
