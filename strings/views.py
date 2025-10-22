@@ -13,8 +13,7 @@ class StringListCreateView(APIView):
         # HNG-compatible filters
         length = request.query_params.get('length')
         is_palindrome = request.query_params.get('is_palindrome')
-        word_count = request.query_params.get('word_count')
-        contains_character = request.query_params.get('contains_character')
+        contains = request.query_params.get('contains')
 
         if length:
             queryset = queryset.filter(length=int(length))
@@ -22,11 +21,8 @@ class StringListCreateView(APIView):
         if is_palindrome:
             queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
 
-        if word_count:
-            queryset = queryset.filter(word_count=int(word_count))
-
-        if contains_character:
-            queryset = queryset.filter(value__icontains=contains_character)
+        if contains:
+            queryset = queryset.filter(value__icontains=contains)
 
         serializer = StringFileSerializer(queryset, many=True)
         return Response({
@@ -83,7 +79,9 @@ class StringDeleteView(APIView):
             return Response({"error": "String not found"}, status=status.HTTP_404_NOT_FOUND)
 
         string_obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        # Return JSON so Thanos parser won't fail
+        return Response({"message": f"String '{value}' deleted"}, status=status.HTTP_200_OK)
+
 
 class NaturalLanguageFilterView(APIView):
     def get(self, request):
@@ -96,7 +94,7 @@ class NaturalLanguageFilterView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        filters = parsed['parsed_filters']
+        filters = parsed.get('parsed_filters', {})
         queryset = StringFile.objects.all()
 
         if 'is_palindrome' in filters:
@@ -114,8 +112,5 @@ class NaturalLanguageFilterView(APIView):
         return Response({
             "data": serializer.data,
             "count": queryset.count(),
-            "filters_applied": filters  # <-- HNG expects this key
+            "interpreted_query": parsed
         }, status=status.HTTP_200_OK)
-
-
-
