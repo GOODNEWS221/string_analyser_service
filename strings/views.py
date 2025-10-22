@@ -1,3 +1,4 @@
+# views.py
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -5,28 +6,17 @@ from .models import StringFile
 from .serializers import StringFileSerializer
 from .utils import string_analysis, parse_natural_language_query
 
-
 class StringListCreateView(APIView):
     def get(self, request):
         queryset = StringFile.objects.all()
-
-        # HNG-compatible filters
         length = request.query_params.get('length')
         is_palindrome = request.query_params.get('is_palindrome')
         contains = request.query_params.get('contains')
 
         if length:
-            try:
-                queryset = queryset.filter(length=int(length))
-            except ValueError:
-                return Response({"error": "Invalid length value"}, status=status.HTTP_400_BAD_REQUEST)
-
-        if is_palindrome:
-            if is_palindrome.lower() in ['true', 'false']:
-                queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
-            else:
-                return Response({"error": "Invalid is_palindrome value"}, status=status.HTTP_400_BAD_REQUEST)
-
+            queryset = queryset.filter(length=int(length))
+        if is_palindrome is not None:
+            queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
         if contains:
             queryset = queryset.filter(value__icontains=contains)
 
@@ -39,12 +29,10 @@ class StringListCreateView(APIView):
 
     def post(self, request):
         data = request.data
-
         if 'value' not in data:
             return Response({"error": "Missing 'value' field"}, status=status.HTTP_400_BAD_REQUEST)
 
         value = data['value']
-
         if not isinstance(value, str):
             return Response({"error": "'value' must be a string"}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
@@ -62,10 +50,8 @@ class StringListCreateView(APIView):
             sha256_hash=props['sha256_hash'],
             character_frequency_map=props['character_frequency_map']
         )
-
         serializer = StringFileSerializer(string_obj)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
 
 class StringRetrieveView(APIView):
     def get(self, request, value):
@@ -73,10 +59,8 @@ class StringRetrieveView(APIView):
             string_obj = StringFile.objects.get(value=value)
         except StringFile.DoesNotExist:
             return Response({"error": "String not found"}, status=status.HTTP_404_NOT_FOUND)
-
         serializer = StringFileSerializer(string_obj)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
 
 class StringDeleteView(APIView):
     def delete(self, request, value):
@@ -88,18 +72,13 @@ class StringDeleteView(APIView):
         string_obj.delete()
         return Response({"message": f"String '{value}' deleted"}, status=status.HTTP_200_OK)
 
-
 class NaturalLanguageFilterView(APIView):
     def get(self, request):
         query = request.query_params.get('query')
         if not query:
             return Response({"error": "Query parameter is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            parsed = parse_natural_language_query(query)
-        except ValueError as e:
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+        parsed = parse_natural_language_query(query)
         filters = parsed['parsed_filters']
         queryset = StringFile.objects.all()
 
