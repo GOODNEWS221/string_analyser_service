@@ -16,10 +16,16 @@ class StringListCreateView(APIView):
         contains = request.query_params.get('contains')
 
         if length:
-            queryset = queryset.filter(length=int(length))
+            try:
+                queryset = queryset.filter(length=int(length))
+            except ValueError:
+                return Response({"error": "Invalid length value"}, status=status.HTTP_400_BAD_REQUEST)
 
         if is_palindrome:
-            queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
+            if is_palindrome.lower() in ['true', 'false']:
+                queryset = queryset.filter(is_palindrome=is_palindrome.lower() == 'true')
+            else:
+                return Response({"error": "Invalid is_palindrome value"}, status=status.HTTP_400_BAD_REQUEST)
 
         if contains:
             queryset = queryset.filter(value__icontains=contains)
@@ -56,6 +62,7 @@ class StringListCreateView(APIView):
             sha256_hash=props['sha256_hash'],
             character_frequency_map=props['character_frequency_map']
         )
+
         serializer = StringFileSerializer(string_obj)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -79,7 +86,6 @@ class StringDeleteView(APIView):
             return Response({"error": "String not found"}, status=status.HTTP_404_NOT_FOUND)
 
         string_obj.delete()
-        # Return JSON so Thanos parser won't fail
         return Response({"message": f"String '{value}' deleted"}, status=status.HTTP_200_OK)
 
 
@@ -94,7 +100,7 @@ class NaturalLanguageFilterView(APIView):
         except ValueError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        filters = parsed.get('parsed_filters', {})
+        filters = parsed['parsed_filters']
         queryset = StringFile.objects.all()
 
         if 'is_palindrome' in filters:
