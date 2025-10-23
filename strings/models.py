@@ -2,7 +2,7 @@ from django.db import models
 import hashlib
 
 class AnalyzedString(models.Model):
-    value = models.TextField(unique=True)
+    value = models.CharField(max_length=500, unique=True)
     length = models.IntegerField()
     is_palindrome = models.BooleanField()
     unique_characters = models.IntegerField()
